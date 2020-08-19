@@ -281,7 +281,13 @@ public class Packet
             this.sourceAddress = InetAddress.getByAddress(addressBytes);
 
             buffer.get(addressBytes, 0, 4);
-            this.destinationAddress = InetAddress.getByAddress(addressBytes);
+
+//            if(InetAddress.getByAddress(addressBytes).equals(InetAddress.getByName("10.0.0.2"))){
+//                this.destinationAddress = InetAddress.getByName("192.168.43.20");
+//            }else{
+                this.destinationAddress = InetAddress.getByAddress(addressBytes);
+//            }
+
 
             //this.optionsAndPadding = buffer.getInt();
         }

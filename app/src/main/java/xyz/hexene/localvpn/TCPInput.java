@@ -88,6 +88,7 @@ public class TCPInput implements Runnable
     {
         TCB tcb = (TCB) key.attachment();
         Packet referencePacket = tcb.referencePacket;
+        Log.d(TAG,"begin process connect");
         try
         {
             if (tcb.channel.finishConnect())

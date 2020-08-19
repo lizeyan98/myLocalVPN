@@ -24,8 +24,19 @@ import android.net.VpnService;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 
 public class LocalVPN extends ActionBarActivity
@@ -59,6 +70,8 @@ public class LocalVPN extends ActionBarActivity
             public void onClick(View v)
             {
                 startVPN();
+                test();
+
             }
         });
         waitingForVPNStart = false;
@@ -108,4 +121,57 @@ public class LocalVPN extends ActionBarActivity
             vpnButton.setText(R.string.stop_vpn);
         }
     }
+
+
+    private void test(){
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+
+                Socket socket = new Socket();
+                SocketAddress socketAddress = new InetSocketAddress("10.0.0.2",9999);
+                try {
+                    Thread.sleep(1000);
+                    socket.connect(socketAddress);
+                    Log.d("LocalVPN", socket + " connect success");
+                    byte[] bytes = new byte[]{1,2,3,4};
+                    OutputStream outputStream = socket.getOutputStream();
+                    outputStream.write(bytes);
+                    socket.close();
+                } catch (IOException | InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        }).start();
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                ServerSocket serverSocket = null;
+                try {
+                    while(true){
+                        serverSocket = new ServerSocket(9999);
+                        Socket socket = serverSocket.accept();
+                        Log.d("LocalVPN", serverSocket + " accept success");
+                        InputStream inputStream = socket.getInputStream();
+                        byte[] bytes = new byte[30000];
+                        int l = inputStream.read(bytes);
+                        if(l>0){
+                            Log.d("getMessage", l+"  "+ Arrays.toString(bytes));
+                        }
+                        serverSocket.close();
+                    }
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        }).start();
+    }
+
+
+
+
 }

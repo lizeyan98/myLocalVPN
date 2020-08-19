@@ -28,9 +28,17 @@ import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -38,8 +46,8 @@ import java.util.concurrent.Executors;
 public class LocalVPNService extends VpnService
 {
     private static final String TAG = LocalVPNService.class.getSimpleName();
-    private static final String VPN_ADDRESS = "10.0.0.2"; // Only IPv4 support for now
-    private static final String VPN_ROUTE = "0.0.0.0"; // Intercept everything
+    private static final String VPN_ADDRESS = "10.0.2.0"; // Only IPv4 support for now
+    private static final String VPN_ROUTE = "10.0.0.0"; // Intercept everything
 
     public static final String BROADCAST_VPN_STATE = "xyz.hexene.localvpn.VPN_STATE";
 
@@ -92,11 +100,20 @@ public class LocalVPNService extends VpnService
 
     private void setupVPN()
     {
+
+        /*
+        *
+        * 比如说， 本地6666端口，往外地8.8.8.8:53发送了一个UDP包。
+        * 虚拟网卡收到后，将其目的地改为指向本地UDPServer，6.6.6.6:6666，重新写入虚拟网卡。
+        * 但这时本地UDPServer并不会收到这个报文，只有将这个IP报文的源地址更改一下，
+        * 例如由本地ip改为8.8.8.8(原目的地址)，这个报文才会被本地UDPServer收到。
+        *
+        * */
         if (vpnInterface == null)
         {
             Builder builder = new Builder();
             builder.addAddress(VPN_ADDRESS, 32);
-            builder.addRoute(VPN_ROUTE, 0);
+            builder.addRoute(VPN_ROUTE, 24);
             vpnInterface = builder.setSession(getString(R.string.app_name)).setConfigureIntent(pendingIntent).establish();
         }
     }
@@ -147,9 +164,9 @@ public class LocalVPNService extends VpnService
         }
     }
 
-    private static class VPNRunnable implements Runnable
+    private class VPNRunnable implements Runnable
     {
-        private static final String TAG = VPNRunnable.class.getSimpleName();
+        private final String TAG = VPNRunnable.class.getSimpleName();
 
         private FileDescriptor vpnFileDescriptor;
 
@@ -195,6 +212,11 @@ public class LocalVPNService extends VpnService
                         dataSent = true;
                         bufferToNetwork.flip();
                         Packet packet = new Packet(bufferToNetwork);
+                        Log.d(TAG,packet.ip4Header.toString());
+                        Log.d(TAG,packet.tcpHeader.toString());
+
+
+
                         if (packet.isUDP())
                         {
                             deviceToNetworkUDPQueue.offer(packet);
@@ -229,8 +251,8 @@ public class LocalVPNService extends VpnService
                     {
                         dataReceived = false;
                     }
-
-                    // TODO: Sleep-looping is not very battery-friendly, consider blocking instead
+//
+//                    // TODO: Sleep-looping is not very battery-friendly, consider blocking instead
                     // Confirm if throughput with ConcurrentQueue is really higher compared to BlockingQueue
                     if (!dataSent && !dataReceived)
                         Thread.sleep(10);

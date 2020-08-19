@@ -21,6 +21,7 @@ import android.util.Log;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -82,9 +83,20 @@ public class TCPOutput implements Runnable
                 TCPHeader tcpHeader = currentPacket.tcpHeader;
                 int destinationPort = tcpHeader.destinationPort;
                 int sourcePort = tcpHeader.sourcePort;
+                String ipAndPort;
+                if(destinationAddress.getHostAddress().equals("10.0.0.2")){
+                    ipAndPort = "192.168.43.20" + ":" +
+                            destinationPort + ":" + sourcePort;
+                }else {
+                    ipAndPort = destinationAddress.getHostAddress() + ":" +
+                            destinationPort + ":" + sourcePort;
+                }
 
-                String ipAndPort = destinationAddress.getHostAddress() + ":" +
-                        destinationPort + ":" + sourcePort;
+
+
+
+
+
                 TCB tcb = TCB.getTCB(ipAndPort);
                 if (tcb == null)
                     initializeConnection(ipAndPort, destinationAddress, destinationPort,
@@ -132,10 +144,18 @@ public class TCPOutput implements Runnable
             TCB tcb = new TCB(ipAndPort, random.nextInt(Short.MAX_VALUE + 1), tcpHeader.sequenceNumber, tcpHeader.sequenceNumber + 1,
                     tcpHeader.acknowledgementNumber, outputChannel, currentPacket);
             TCB.putTCB(ipAndPort, tcb);
-
+            Log.d(TAG, "init connect");
             try
             {
-                outputChannel.connect(new InetSocketAddress(destinationAddress, destinationPort));
+                SocketAddress socketAddress;
+                if(destinationAddress.getHostAddress().equals("10.0.0.2")){
+                    socketAddress = new InetSocketAddress("192.168.43.20",destinationPort);
+                    Log.d(TAG, "get socketAddress");
+                }else{
+                     socketAddress = new InetSocketAddress(destinationAddress, destinationPort);
+                }
+                outputChannel.connect(socketAddress);
+                Log.d(TAG, "channel connect");
                 if (outputChannel.finishConnect())
                 {
                     tcb.status = TCBStatus.SYN_RECEIVED;
